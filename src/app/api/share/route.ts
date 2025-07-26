@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+interface SharedConversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: string;
+  totalMessages: number;
+}
+
 // In-memory storage for demo purposes
 // In production, you'd use a database like MongoDB, PostgreSQL, etc.
-const sharedConversations = new Map<string, any>();
+const sharedConversations = new Map<string, SharedConversation>();
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,10 +31,10 @@ export async function POST(request: NextRequest) {
     const shareId = generateShareId();
     
     // Store the conversation
-    const conversationData = {
+    const conversationData: SharedConversation = {
       id: shareId,
       title: title || 'StockSage AI Conversation',
-      messages: messages.map((msg: any) => ({
+      messages: messages.map((msg: Message) => ({
         role: msg.role,
         content: msg.content,
         timestamp: msg.timestamp
