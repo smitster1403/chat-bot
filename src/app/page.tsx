@@ -48,6 +48,99 @@ export default function Home() {
     setMessages([]);
   };
 
+  // Export conversation functionality
+  const exportConversationAsJSON = () => {
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      chatbot: "StockSage AI - Stock Market Analysis",
+      totalMessages: messages.length,
+      conversation: messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      }))
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stocksage-conversation-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportConversationAsCSV = () => {
+    const csvHeader = 'Role,Content,Timestamp\n';
+    const csvContent = messages.map(msg => {
+      const content = msg.content.replace(/"/g, '""').replace(/\n/g, ' ');
+      return `"${msg.role}","${content}","${msg.timestamp.toISOString()}"`;
+    }).join('\n');
+    
+    const csvData = csvHeader + csvContent;
+    const dataBlob = new Blob([csvData], { type: 'text/csv' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stocksage-conversation-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportConversationAsText = () => {
+    const header = `StockSage AI - Stock Market Analysis Conversation
+Export Date: ${new Date().toLocaleString()}
+Total Messages: ${messages.length}
+${'='.repeat(60)}\n\n`;
+
+    const conversationText = messages.map(msg => {
+      const timestamp = msg.timestamp.toLocaleString();
+      const role = msg.role === 'user' ? 'YOU' : 'STOCKSAGE AI';
+      return `[${timestamp}] ${role}:\n${msg.content}\n\n${'─'.repeat(40)}\n`;
+    }).join('\n');
+
+    const footer = `\n${'='.repeat(60)}\nEnd of conversation export from StockSage AI\nVisit: https://platform.openai.com for more AI tools`;
+    
+    const fullText = header + conversationText + footer;
+    const dataBlob = new Blob([fullText], { type: 'text/plain' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stocksage-conversation-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const copyConversationToClipboard = async () => {
+    const header = `StockSage AI - Stock Market Analysis Conversation
+Export Date: ${new Date().toLocaleString()}
+Total Messages: ${messages.length}
+${'='.repeat(60)}\n\n`;
+
+    const conversationText = messages.map(msg => {
+      const timestamp = msg.timestamp.toLocaleString();
+      const role = msg.role === 'user' ? 'YOU' : 'STOCKSAGE AI';
+      return `[${timestamp}] ${role}:\n${msg.content}\n\n${'─'.repeat(40)}\n`;
+    }).join('\n');
+
+    const fullText = header + conversationText;
+    
+    try {
+      await navigator.clipboard.writeText(fullText);
+      alert('✅ Conversation copied to clipboard! You can now paste it anywhere.');
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      alert('❌ Failed to copy to clipboard. Please try downloading instead.');
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputValue.trim() || !apiKey) return;
 
@@ -68,16 +161,40 @@ export default function Home() {
         dangerouslyAllowBrowser: true // Note: In production, use a backend API
       });
 
+      // Stock market focused system prompt
+      const systemPrompt = `You are StockSage AI, a professional stock market analysis assistant specializing in financial insights and investment guidance. Your expertise includes:
+
+- Technical analysis and chart patterns
+- Fundamental analysis of companies
+- Market trends and sector analysis  
+- Risk assessment and portfolio management
+- Economic indicators and their market impact
+- Options trading strategies
+- Dividend analysis and income investing
+
+Always provide:
+- Data-driven insights with reasoning
+- Risk disclaimers when appropriate
+- Multiple perspectives on investment decisions
+- Clear explanations of financial concepts
+- Current market context when relevant
+
+Remember: You provide educational information and analysis, not personalized financial advice. Always remind users to consult with financial advisors and do their own research before making investment decisions.
+
+Format your responses professionally with clear sections when analyzing stocks or market conditions.`;
+
       const response = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4',
         messages: [
+          { role: 'system', content: systemPrompt },
           ...messages.map(msg => ({
             role: msg.role,
             content: msg.content
           })),
           { role: 'user', content: inputValue }
         ],
-        max_tokens: 500,
+        max_tokens: 1000,
+        temperature: 0.7,
       });
 
       const assistantMessage: Message = {
@@ -128,10 +245,10 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="api-key-container">
           <h1 className="api-key-title">
-            AI Chat Bot
+            📈 StockSage AI
           </h1>
           <p className="api-key-description">
-            Enter your OpenAI API key to get started. Your key will be stored securely in your browser.
+            Your AI-powered stock market analysis assistant. Enter your OpenAI API key to access professional financial insights and market analysis.
           </p>
           <div className="form-group">
             <input
@@ -146,7 +263,7 @@ export default function Home() {
             onClick={saveApiKey}
             className="btn-primary"
           >
-            Save API Key & Start Chatting
+            Start Stock Analysis
           </button>
           <div className="api-instructions">
             <h3>How to get your API key:</h3>
@@ -167,15 +284,38 @@ export default function Home() {
       <div className="chat-container">
         {/* Header */}
         <header className="chat-header">
-          <div className="logo">
-            <h1>AI Chat Bot</h1>
-          </div>
+          <h1>📈 StockSage AI <span className="subtitle">- Market Analysis</span></h1>
           <div className="header-actions">
+            <div className="dropdown">
+              <button 
+                className={`dropdown-toggle ${messages.length === 0 ? 'disabled' : ''}`}
+                disabled={messages.length === 0}
+                title={messages.length === 0 ? 'Start a conversation to export' : `Export ${messages.length} messages`}
+              >
+                📥 Export Chat {messages.length > 0 && `(${messages.length})`}
+              </button>
+              {messages.length > 0 && (
+                <div className="dropdown-menu">
+                  <button onClick={copyConversationToClipboard} className="dropdown-item">
+                    📋 Copy to Clipboard
+                  </button>
+                  <button onClick={exportConversationAsText} className="dropdown-item">
+                    📄 Download as Text
+                  </button>
+                  <button onClick={exportConversationAsJSON} className="dropdown-item">
+                    🔧 Download as JSON
+                  </button>
+                  <button onClick={exportConversationAsCSV} className="dropdown-item">
+                    📊 Download as CSV
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={clearApiKey}
               className="btn-secondary"
             >
-              Change API Key
+              🔑 Change API Key
             </button>
           </div>
         </header>
@@ -185,9 +325,35 @@ export default function Home() {
           <div className="messages-wrapper">
             {messages.length === 0 && (
               <div className="empty-state">
-                <div className="empty-state-icon">🤖</div>
-                <h2>Start a conversation</h2>
-                <p>Ask me anything! I&apos;m here to help.</p>
+                <div className="empty-state-icon">📊</div>
+                <h2>Welcome to StockSage AI</h2>
+                <p>Ask me about stocks, market trends, technical analysis, or investment strategies!</p>
+                <div className="quick-prompts">
+                  <button 
+                    onClick={() => setInputValue("What's your analysis of Apple (AAPL) stock?")}
+                    className="quick-prompt-btn"
+                  >
+                    Analyze AAPL
+                  </button>
+                  <button 
+                    onClick={() => setInputValue("What are the key market trends this week?")}
+                    className="quick-prompt-btn"
+                  >
+                    Market Trends
+                  </button>
+                  <button 
+                    onClick={() => setInputValue("Explain technical analysis basics")}
+                    className="quick-prompt-btn"
+                  >
+                    Technical Analysis
+                  </button>
+                  <button 
+                    onClick={() => setInputValue("What should I know about dividend investing?")}
+                    className="quick-prompt-btn"
+                  >
+                    Dividend Investing
+                  </button>
+                </div>
               </div>
             )}
             
@@ -214,7 +380,7 @@ export default function Home() {
                       <div className="dot"></div>
                       <div className="dot"></div>
                     </div>
-                    <span className="loading-text">AI is thinking...</span>
+                    <span className="loading-text">Analyzing market data...</span>
                   </div>
                 </div>
               </div>
@@ -231,7 +397,7 @@ export default function Home() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message here... (Press Enter to send)"
+              placeholder="Ask about stocks, market analysis, trading strategies... (Press Enter to send)"
               className="message-input"
               rows={1}
               disabled={isLoading}
@@ -241,7 +407,7 @@ export default function Home() {
               disabled={!inputValue.trim() || isLoading}
               className="send-button"
             >
-              Send
+              📊 Analyze
             </button>
           </div>
         </div>

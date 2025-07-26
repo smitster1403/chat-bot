@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChatBot",
-  description: "ChatBot powered by OpenAI",
+  title: "StockSage AI - Professional Stock Market Analysis",
+  description: "AI-powered stock market analysis and investment insights. Get professional financial advice, technical analysis, and market trends.",
 };
 
 export default function RootLayout({
