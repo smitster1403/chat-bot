@@ -141,6 +141,41 @@ ${'='.repeat(60)}\n\n`;
     }
   };
 
+  const shareConversation = async () => {
+    if (messages.length === 0) {
+      alert('❌ No conversation to share yet. Start chatting first!');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: messages,
+          title: `StockSage AI Analysis - ${new Date().toLocaleDateString()}`
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create shareable link');
+      }
+
+      const data = await response.json();
+      
+      // Copy the share URL to clipboard
+      await navigator.clipboard.writeText(data.shareUrl);
+      
+      alert(`✅ Shareable link created and copied to clipboard!\n\n🔗 Link: ${data.shareUrl}\n\n📋 The link has been copied - you can now share it with others to view this conversation in read-only mode.`);
+      
+    } catch (error) {
+      console.error('Error sharing conversation:', error);
+      alert('❌ Failed to create shareable link. Please try again.');
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputValue.trim() || !apiKey) return;
 
@@ -296,6 +331,9 @@ Format your responses professionally with clear sections when analyzing stocks o
               </button>
               {messages.length > 0 && (
                 <div className="dropdown-menu">
+                  <button onClick={shareConversation} className="dropdown-item">
+                    🔗 Create Shareable Link
+                  </button>
                   <button onClick={copyConversationToClipboard} className="dropdown-item">
                     📋 Copy to Clipboard
                   </button>
@@ -380,7 +418,6 @@ Format your responses professionally with clear sections when analyzing stocks o
                       <div className="dot"></div>
                       <div className="dot"></div>
                     </div>
-                    <span className="loading-text">Analyzing market data...</span>
                   </div>
                 </div>
               </div>

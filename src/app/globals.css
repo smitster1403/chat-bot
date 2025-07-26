@@ -262,18 +262,22 @@ body {
 
 /* Export button animations */
 .dropdown-item:nth-child(1):hover {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
 }
 
 .dropdown-item:nth-child(2):hover {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
 .dropdown-item:nth-child(3):hover {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
 }
 
 .dropdown-item:nth-child(4):hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.dropdown-item:nth-child(5):hover {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
@@ -608,6 +612,62 @@ body {
   cursor: not-allowed;
 }
 
+/* Shared Conversation Styles */
+.shared-info {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 1px solid var(--border-color);
+  padding: 20px 32px;
+}
+
+.shared-info-content h3 {
+  color: var(--primary-color);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.shared-meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.shared-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shared-footer {
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  padding: 16px 32px;
+}
+
+.shared-footer-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.shared-footer-content p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.footer-link {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
 /* Enhanced Responsive Design */
 @media (max-width: 768px) {
   .chat-container {
@@ -615,6 +675,19 @@ body {
     margin: 8px auto;
     height: calc(100vh - 16px);
     border-radius: 8px;
+  }
+  
+  .shared-info {
+    padding: 16px 20px;
+  }
+  
+  .shared-meta {
+    gap: 16px;
+    font-size: 12px;
+  }
+  
+  .shared-footer {
+    padding: 12px 20px;
   }
   
   .chat-header {
