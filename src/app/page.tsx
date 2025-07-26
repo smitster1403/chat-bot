@@ -1,103 +1,251 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import OpenAI from 'openai';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  // Load API key from localStorage on component mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('openai-api-key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setShowApiKeyInput(false);
+    }
+  }, []);
+
+  // Auto-scroll to bottom of messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const saveApiKey = () => {
+    if (!apiKey.trim()) {
+      alert('Please enter a valid API key');
+      return;
+    }
+    localStorage.setItem('openai-api-key', apiKey);
+    setShowApiKeyInput(false);
+  };
+
+  const clearApiKey = () => {
+    localStorage.removeItem('openai-api-key');
+    setApiKey('');
+    setShowApiKeyInput(true);
+    setMessages([]);
+  };
+
+  const sendMessage = async () => {
+    if (!inputValue.trim() || !apiKey) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputValue,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    try {
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true // Note: In production, use a backend API
+      });
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          ...messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          { role: 'user', content: inputValue }
+        ],
+        max_tokens: 500,
+      });
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.choices[0]?.message?.content || 'No response received.',
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error calling OpenAI:', error);
+      let errorContent = 'Sorry, there was an error processing your request.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('429')) {
+          errorContent = '⚠️ API quota exceeded. Please check your OpenAI billing and usage limits at platform.openai.com/usage. You may need to upgrade your plan or wait for your quota to reset.';
+        } else if (error.message.includes('401')) {
+          errorContent = '🔑 Invalid API key. Please check your API key and try again.';
+        } else if (error.message.includes('timeout')) {
+          errorContent = '⏱️ Request timed out. Please try again.';
+        } else {
+          errorContent = `❌ Error: ${error.message}`;
+        }
+      }
+      
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: errorContent,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  if (showApiKeyInput) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="api-key-container">
+          <h1 className="api-key-title">
+            AI Chat Bot
+          </h1>
+          <p className="api-key-description">
+            Enter your OpenAI API key to get started. Your key will be stored securely in your browser.
+          </p>
+          <div className="form-group">
+            <input
+              type="password"
+              placeholder="Enter your OpenAI API key (sk-...)"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="form-input"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          <button
+            onClick={saveApiKey}
+            className="btn-primary"
           >
-            Read our docs
-          </a>
+            Save API Key & Start Chatting
+          </button>
+          <div className="api-instructions">
+            <h3>How to get your API key:</h3>
+            <ol>
+              <li>1. Go to <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI API Keys</a></li>
+              <li>2. Sign in or create an OpenAI account</li>
+              <li>3. Click &ldquo;Create new secret key&rdquo;</li>
+              <li>4. Copy the key and paste it above</li>
+            </ol>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="chat-container">
+        {/* Header */}
+        <header className="chat-header">
+          <div className="logo">
+            <h1>AI Chat Bot</h1>
+          </div>
+          <div className="header-actions">
+            <button
+              onClick={clearApiKey}
+              className="btn-secondary"
+            >
+              Change API Key
+            </button>
+          </div>
+        </header>
+
+        {/* Messages */}
+        <div className="messages-container">
+          <div className="messages-wrapper">
+            {messages.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-state-icon">🤖</div>
+                <h2>Start a conversation</h2>
+                <p>Ask me anything! I&apos;m here to help.</p>
+              </div>
+            )}
+            
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`message ${message.role}`}
+              >
+                <div className={`message-bubble ${message.role}`}>
+                  <div className="message-content">{message.content}</div>
+                  <div className="message-timestamp">
+                    {message.timestamp.toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {isLoading && (
+              <div className="loading-message">
+                <div className="loading-bubble">
+                  <div className="loading-dots">
+                    <div className="dots">
+                      <div className="dot"></div>
+                      <div className="dot"></div>
+                      <div className="dot"></div>
+                    </div>
+                    <span className="loading-text">AI is thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="input-container">
+          <div className="input-wrapper">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type your message here... (Press Enter to send)"
+              className="message-input"
+              rows={1}
+              disabled={isLoading}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!inputValue.trim() || isLoading}
+              className="send-button"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
